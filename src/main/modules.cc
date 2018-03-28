@@ -1897,6 +1897,8 @@ void module_init()
     // since Lua calls this by table hash key traversal
     // (which is effectively random)
     // so module interdependencies must come after this phase
+
+    // snort模块, get_snort_module() 单例函数, 解写命令之前已经调用
     ModuleManager::add_module(get_snort_module());
 
     // these modules are not policy specific

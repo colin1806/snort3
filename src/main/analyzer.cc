@@ -43,6 +43,7 @@ typedef DAQ_Verdict
 (* PacketCallback)(void*, const DAQ_PktHdr_t*, const uint8_t*);
 
 // FIXIT-M add fail open capability
+// 报文处理回调函数 by colin
 static THREAD_LOCAL PacketCallback main_func = Snort::packet_callback;
 
 //-------------------------------------------------------------------------
@@ -84,6 +85,7 @@ Analyzer::Analyzer(unsigned i, const char* s)
 
 void Analyzer::operator()(Swapper* ps, uint16_t run_num)
 {
+    //线程属性的相关设置
     set_thread_type(STHREAD_TYPE_PACKET);
     set_instance_id(id);
     set_run_num(run_num);
@@ -91,12 +93,15 @@ void Analyzer::operator()(Swapper* ps, uint16_t run_num)
     ps->apply();
     delete ps;
 
+    //设置线程亲和性, 实例化SFDAQInstance等
+    printf("source = %s \n", source.c_str());
     if (Snort::thread_init_privileged(source.c_str()))
     {
         daq_instance = SFDAQ::get_local_instance();
         privileged_start = daq_instance->can_start_unprivileged();
         set_state(State::INITIALIZED);
-
+        
+        //主业务流程
         analyze();
 
         Snort::thread_term();
@@ -119,6 +124,8 @@ void Analyzer::execute(AnalyzerCommand* ac)
         daq_instance->break_loop(0);
 }
 
+//从pending队列中获取命令, 并执行命令的执行函数
+//之后,将这个命令放入到完成队列, 用于主线程回收
 bool Analyzer::handle_command()
 {
     AnalyzerCommand* ac = nullptr;
@@ -148,17 +155,22 @@ void Analyzer::analyze()
     // The main analyzer loop is terminated by a command returning false or an error during acquire
     while (!exit_requested)
     {
+        //处理命令
         if (handle_command())
             continue;
 
         // If we're not in the running state (usually either pre-start or paused),
         // just keep stalling until something else comes up.
+        //正常状态为: RUNNING
         if (state != State::RUNNING)
         {
             chrono::milliseconds ms(10);
             this_thread::sleep_for(ms);
             continue;
         }
+        //参数1:读取的最大报文数量, 0代表读队列缓存的所有报文
+        //报文处理回调: main_func, 只处理一个报文
+        //返回0为成功
         if (daq_instance->acquire(0, main_func))
             break;
 

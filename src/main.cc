@@ -73,6 +73,7 @@ static bool paused = false;
 static std::queue<AnalyzerCommand*> orphan_commands;
 
 static std::mutex poke_mutex;
+//ring传递pig id
 static Ring<unsigned>* pig_poke = nullptr;
 
 const struct timespec main_sleep = { 0, 1000000 }; // 0.001 sec
@@ -93,6 +94,8 @@ static bool use_shell(SnortConfig* sc)
 }
 
 // FIXIT-L X Replace main_poke()/main_read() usage with command objects
+
+// pig中的analizer的状态设置函数 set_state(), 调用main_poke通过 pig_poke通知主线程
 void main_poke(unsigned id)
 {
     std::lock_guard<std::mutex> lock(poke_mutex);
@@ -125,11 +128,16 @@ public:
 
     void set_index(unsigned index) { idx = index; }
 
+    //准备
     void prep(const char* source);
+    //pig启动, 新建业务线程
     void start();
+    //pig停止, 线程结束
     void stop();
 
+    //发送命令
     bool queue_command(AnalyzerCommand*, bool orphan = false);
+    //释放命令
     void reap_commands();
 
 private:
@@ -141,6 +149,7 @@ private:
 
 void Pig::prep(const char* source)
 {
+    //source 网卡接口名?
     analyzer = new Analyzer(idx, source);
 }
 
@@ -150,7 +159,9 @@ void Pig::start()
     assert(!athread);
     LogMessage("++ [%u] %s\n", idx, analyzer->get_source());
 
+    //交易者, 交换器
     Swapper* ps = new Swapper(SnortConfig::get_conf(), SFAT_GetConfig());
+    //进入到处理线程 by colin
     athread = new std::thread(std::ref(*analyzer), ps, ++run_num);
 }
 
@@ -196,8 +207,11 @@ bool Pig::queue_command(AnalyzerCommand* ac, bool orphan)
     DebugFormat(DEBUG_ANALYZER, "[%u] Queuing command %s for execution (refcount %u)\n",
             idx, ac->stringify(), ac_ref_count);
 #else
+    //get只调用 ref++
     ac->get();
 #endif
+    //让analizer执行命令. 机制:将命令放松到analyzer的命令队列中, analyzer轮寻队列,执行命令(主要是控制命令)
+    //命令参看: analyzer_command.h
     analyzer->execute(ac);
     return true;
 }
@@ -256,6 +270,7 @@ static Pig* get_lazy_pig(unsigned max)
 // main commands
 //-------------------------------------------------------------------------
 
+//命令广播到所有pig
 void snort::main_broadcast_command(AnalyzerCommand* ac)
 {
     unsigned dispatched = 0;
@@ -559,6 +574,7 @@ static int signal_check()
 
     switch ( s )
     {
+    //退出程序
     case PIG_SIG_QUIT:
     case PIG_SIG_TERM:
         main_quit();
@@ -571,6 +587,7 @@ static int signal_check()
             main_quit();
         break;
 
+    //重载配置
     case PIG_SIG_RELOAD_CONFIG:
         main_reload_config();
         break;
@@ -610,8 +627,11 @@ static void reap_commands()
 // FIXIT-L return true if something was done to avoid sleeping
 static bool house_keeping()
 {
+    //检查信号队列, 相应处理
+    //信号处理 process.cc
     signal_check();
 
+    //回收命令
     reap_commands();
 
     IdleProcessing::execute();
@@ -722,11 +742,16 @@ static bool set_mode()
     return true;
 }
 
+// NEW -> INITIALIZED -> STARTED
+// 根据pig analyzer的状态, 相应处理
+//swine:猪, pig的计数
+//pending_privileges:挂起特权
 static void handle(Pig& pig, unsigned& swine, unsigned& pending_privileges)
 {
     switch (pig.analyzer->get_state())
     {
     case Analyzer::State::NEW:
+        // Analyzer::operator() -> set_state(State::INITIALIZED)
         pig.start();
         break;
 
@@ -750,7 +775,9 @@ static void handle(Pig& pig, unsigned& swine, unsigned& pending_privileges)
         }
         else
         {
+            //保存PID文件
             Snort::do_pidfile();
+            //执行 ACStart的exec 为 Analyzer::start(), pig->Analyzer的状态设置为STARTED
             pig.queue_command(new ACStart(), true);
         }
         break;
@@ -776,6 +803,7 @@ static void handle(Pig& pig, unsigned& swine, unsigned& pending_privileges)
         else
         {
             Snort::do_pidfile();
+            //执行 ACRun 的exec, 调用Analyzer::start(), 根据paused值, pig->Analyzer的状态设置为 RUNNING 或 PAUSED
             pig.queue_command(new ACRun(paused), true);
         }
         break;
@@ -790,6 +818,7 @@ static void handle(Pig& pig, unsigned& swine, unsigned& pending_privileges)
     }
 }
 
+//主线程处理函数
 static void main_loop()
 {
     unsigned swine = 0, pending_privileges = 0;
@@ -810,6 +839,7 @@ static void main_loop()
     while ( swine or paused or (Trough::has_next() and !exit_requested) )
     {
         const char* src;
+        //分析线程索引, 可以得到which pig
         int idx = main_read();
 
         if ( idx >= 0 )
@@ -834,6 +864,7 @@ static void main_loop()
             ++swine;
             continue;
         }
+        // 调用 house_keeping()
         service_check();
     }
 }

@@ -260,6 +260,7 @@ void Snort::init(int argc, char** argv)
     SideChannelManager::pre_config_init();
     HighAvailabilityManager::pre_config_init();
 
+    //模块初始化 -> module_init()
     ModuleManager::init();
     ScriptManager::load_scripts(snort_cmd_line_conf->script_paths);
     PluginManager::load_plugins(snort_cmd_line_conf->plugin_path);
@@ -701,8 +702,10 @@ void Snort::capture_packet()
 void Snort::thread_idle()
 {
     // FIXIT-L this whole thing could be pub-sub
+    //用于perf, PerfIdleHandler, perf_monitor.cc
     DataBus::publish(THREAD_IDLE_EVENT, nullptr);
     Stream::timeout_flows(time(nullptr));
+    //统计信息, stats.cc文件, __thread类型, uint64_t
     aux_counts.idle++;
     HighAvailabilityManager::process_receive();
 }
@@ -927,6 +930,9 @@ static DAQ_Verdict update_verdict(DAQ_Verdict verdict, int& inject)
     }
     return verdict;
 }
+
+//每个报文的处理函数
+// 第一个参数为: 模块handle->user_data
 
 DAQ_Verdict Snort::packet_callback(
     void*, const DAQ_PktHdr_t* pkthdr, const uint8_t* pkt)

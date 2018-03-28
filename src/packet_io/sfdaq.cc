@@ -53,6 +53,7 @@ using namespace std;
 static const int DEFAULT_PKT_SNAPLEN = 1514;
 
 // common for all daq threads / instances
+// daq模块
 static const DAQ_Module_t* daq_mod = nullptr;
 static DAQ_Mode daq_mode = DAQ_MODE_PASSIVE;
 static uint32_t snap = DEFAULT_PKT_SNAPLEN;
@@ -152,6 +153,8 @@ void SFDAQ::init(const SnortConfig* sc)
     if (!sc->daq_config->module_name.empty())
         type = sc->daq_config->module_name.c_str();
 
+    //通过类型名称获取daq模块 
+    //printf("type  = %s\n" , type);
     daq_mod = daq_find_module(type);
 
     if (!daq_mod)
@@ -322,7 +325,7 @@ static bool DAQ_ValidateInstance(void* daq_hand)
 
     return true;
 }
-
+//初始化网卡
 bool SFDAQInstance::configure(const SnortConfig* sc)
 {
     DAQ_Config_t cfg;
@@ -338,6 +341,8 @@ bool SFDAQInstance::configure(const SnortConfig* sc)
     cfg.mode = daq_mode;
     cfg.extra = nullptr;
     cfg.flags = 0;
+
+    printf("cfg.name = %s\n", cfg.name);
 
     for (auto& kvp : sc->daq_config->variables)
     {
@@ -365,6 +370,7 @@ bool SFDAQInstance::configure(const SnortConfig* sc)
     if (!strcasecmp(type, "dump") or !strcasecmp(type, "regtest"))
         cfg.extra = reinterpret_cast<char*>(const_cast<DAQ_Module_t*>(daq_find_module("pcap")));
 
+    //daq_hand 为 daq具体模块的句柄, handle. 如dpdk-daq的handle
     err = daq_initialize(daq_mod, &cfg, &daq_hand, buf, sizeof(buf));
     if (err)
     {

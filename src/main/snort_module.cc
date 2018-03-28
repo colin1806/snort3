@@ -688,6 +688,7 @@ bool SnortModule::set(const char*, Value& v, SnortConfig* sc)
     else if ( v.is("-y") )
         sc->set_show_year(true);
 
+    //设置业务线程数
     else if ( v.is("-z") || v.is("--max-packet-threads") )
         ThreadConfig::set_instance_max(v.get_long());
 

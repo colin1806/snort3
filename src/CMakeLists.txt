@@ -176,7 +176,17 @@ message("
 ")
 ]]
 
+
+link_directories($ENV{RTE_SDK}/lib)
+
+#set(DPDK_LIBS
+#  "-Wl,--whole-archive"
+#  "-ldpdk"
+#  "-Wl,--no-whole-archive"
+#  )
+
 target_link_libraries( snort
+    ${DPDK_LIBS}
     ${EXTERNAL_LIBRARIES}
 )
 

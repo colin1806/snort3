@@ -180,6 +180,7 @@ void config_conf(const char* val)
 {
     lua_conf = val;
     SetSnortConfDir(lua_conf.c_str());
+    //设置报文 (检查)回调 by colin
     snort::Snort::set_main_hook(snort::DetectionEngine::inspect);
 }
 
