@@ -113,7 +113,7 @@ static pid_t snort_main_thread_pid = 0;
 
 // non-local for easy access from core
 static THREAD_LOCAL DAQ_PktHdr_t s_pkth;
-static THREAD_LOCAL uint8_t s_data[65536];
+static THREAD_LOCAL uint8_t* s_data = nullptr;
 static THREAD_LOCAL Packet* s_packet = nullptr;
 static THREAD_LOCAL ContextSwitcher* s_switcher = nullptr;
 
@@ -578,7 +578,7 @@ SnortConfig* Snort::get_reload_config(const char* fname)
     ControlMgmt::reconfigure_controls();
 #endif
 
-    if ( !InspectorManager::configure(sc) )
+    if ( get_parse_errors() or !InspectorManager::configure(sc) )
     {
         parser_term(sc);
         delete sc;
@@ -726,6 +726,7 @@ void Snort::thread_rotate()
  */
 bool Snort::thread_init_privileged(const char* intf)
 {
+    s_data = new uint8_t[65535];
     show_source(intf);
 
     SnortConfig::get_conf()->thread_config->implement_thread_affinity(STHREAD_TYPE_PACKET, get_instance_id());
@@ -781,6 +782,7 @@ void Snort::thread_init_unprivileged()
 
     // in case there are HA messages waiting, process them first
     HighAvailabilityManager::process_receive();
+    PacketManager::thread_init();
 }
 
 void Snort::thread_term()
@@ -821,9 +823,11 @@ void Snort::thread_term()
     CleanupTag();
     FileService::thread_term();
     PacketTracer::thread_term();
+    PacketManager::thread_term();
 
     Active::term();
     delete s_switcher;
+    delete s_data;
 }
 
 void Snort::inspect(Packet* p)
@@ -886,32 +890,32 @@ DAQ_Verdict Snort::process_packet(
 }
 
 // process (wire-only) packet verdicts here
-static DAQ_Verdict update_verdict(DAQ_Verdict verdict, int& inject)
+static DAQ_Verdict update_verdict(Packet* p, DAQ_Verdict verdict, int& inject)
 {
     if ( Active::packet_was_dropped() and Active::can_block() )
     {
         if ( verdict == DAQ_VERDICT_PASS )
             verdict = DAQ_VERDICT_BLOCK;
     }
-    else if ( s_packet->packet_flags & PKT_RESIZED )
+    else if ( p->packet_flags & PKT_RESIZED )
     {
         // we never increase, only trim, but daq doesn't support resizing wire packet
-        PacketManager::encode_update(s_packet);
+        PacketManager::encode_update(p);
 
-        if ( !SFDAQ::inject(s_packet->pkth, 0, s_packet->pkt, s_packet->pkth->pktlen) )
+        if ( !SFDAQ::inject(p->pkth, 0, p->pkt, p->pkth->pktlen) )
         {
             inject = 1;
             verdict = DAQ_VERDICT_BLOCK;
         }
     }
-    else if ( s_packet->packet_flags & PKT_MODIFIED )
+    else if ( p->packet_flags & PKT_MODIFIED )
     {
         // this packet was normalized and/or has replacements
-        PacketManager::encode_update(s_packet);
+        PacketManager::encode_update(p);
         verdict = DAQ_VERDICT_REPLACE;
     }
-    else if ( (s_packet->packet_flags & PKT_IGNORE) ||
-        (s_packet->flow && s_packet->flow->get_ignore_direction( ) == SSN_DIR_BOTH) )
+    else if ( (p->packet_flags & PKT_IGNORE) ||
+        (p->flow && p->flow->get_ignore_direction( ) == SSN_DIR_BOTH) )
     {
         if ( !Active::get_tunnel_bypass() )
         {
@@ -923,10 +927,10 @@ static DAQ_Verdict update_verdict(DAQ_Verdict verdict, int& inject)
             aux_counts.internal_whitelist++;
         }
     }
-    else if ( s_packet->ptrs.decode_flags & DECODE_PKT_TRUST )
+    else if ( p->ptrs.decode_flags & DECODE_PKT_TRUST )
     {
-        if (s_packet->flow)
-            s_packet->flow->set_ignore_direction(SSN_DIR_BOTH);
+        if (p->flow)
+            p->flow->set_ignore_direction(SSN_DIR_BOTH);
         verdict = DAQ_VERDICT_WHITELIST;
     }
     else
@@ -967,7 +971,7 @@ DAQ_Verdict Snort::packet_callback(
     ActionManager::execute(s_packet);
 
     int inject = 0;
-    verdict = update_verdict(verdict, inject);
+    verdict = update_verdict(s_packet, verdict, inject);
 
     PacketTracer::log("NAP id %u, IPS id %u, Verdict %s\n",
         get_network_policy()->policy_id, get_ips_policy()->policy_id,

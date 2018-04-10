@@ -158,12 +158,10 @@ static inline IPrepInfo* ReputationLookup(ReputationConfig* config, const SfIp* 
 {
     IPrepInfo* result;
 
-    DEBUG_WRAP(DebugFormat(DEBUG_REPUTATION, "Lookup address: %s \n", ip->ntoa() ); );
     if (!config->scanlocal)
     {
         if (ip->is_private() )
         {
-            DEBUG_WRAP(DebugMessage(DEBUG_REPUTATION, "Private address\n"); );
             return nullptr;
         }
     }

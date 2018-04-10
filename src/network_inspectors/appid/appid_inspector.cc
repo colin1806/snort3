@@ -27,28 +27,30 @@
 
 #include <openssl/crypto.h>
 
-#include "appid_stats.h"
-#include "appid_session.h"
-#include "appid_discovery.h"
-#include "app_forecast.h"
-#include "host_port_app_cache.h"
-#include "lua_detector_module.h"
-#include "appid_http_event_handler.h"
-#include "thirdparty_appid_utils.h"
-#include "client_plugins/client_discovery.h"
-#include "service_plugins/service_discovery.h"
-#include "service_plugins/service_ssl.h"
-#include "detector_plugins/detector_dns.h"
-#include "detector_plugins/http_url_patterns.h"
-#include "detector_plugins/detector_sip.h"
-#include "detector_plugins/detector_pattern.h"
 #include "flow/flow.h"
 #include "log/messages.h"
 #include "log/packet_tracer.h"
 #include "managers/inspector_manager.h"
 #include "managers/module_manager.h"
-#include "protocols/packet.h"
 #include "profiler/profiler.h"
+#include "protocols/packet.h"
+
+#include "app_forecast.h"
+#include "appid_debug.h"
+#include "appid_discovery.h"
+#include "appid_http_event_handler.h"
+#include "appid_session.h"
+#include "appid_stats.h"
+#include "client_plugins/client_discovery.h"
+#include "detector_plugins/detector_dns.h"
+#include "detector_plugins/detector_pattern.h"
+#include "detector_plugins/detector_sip.h"
+#include "detector_plugins/http_url_patterns.h"
+#include "host_port_app_cache.h"
+#include "lua_detector_module.h"
+#include "service_plugins/service_discovery.h"
+#include "service_plugins/service_ssl.h"
+#include "thirdparty_appid_utils.h"
 
 using namespace snort;
 static THREAD_LOCAL PacketTracer::TracerMute appid_mute;
@@ -102,7 +104,7 @@ bool AppIdInspector::configure(SnortConfig* sc)
 {
     assert(!active_config);
 
-    active_config = new AppIdConfig((AppIdModuleConfig*)config);
+    active_config = new AppIdConfig(const_cast<AppIdModuleConfig*>(config));
 
     DataBus::subscribe(HTTP_REQUEST_HEADER_EVENT_KEY, new HttpEventHandler(
         HttpEventHandler::REQUEST_EVENT));
@@ -153,9 +155,11 @@ void AppIdInspector::tinit()
     PatternClientDetector::finalize_client_port_patterns();
     AppIdDiscovery::finalize_plugins();
     http_matchers->finalize();
-    SipUdpClientDetector::finalize_sip_ua();
     ssl_detector_process_patterns();
     dns_host_detector_process_patterns();
+    appidDebug = new AppIdDebug();
+    if (active_config->mod_config and active_config->mod_config->log_all_sessions)
+        appidDebug->set_enabled(true);
 }
 
 void AppIdInspector::tterm()
@@ -171,6 +175,8 @@ void AppIdInspector::tterm()
     LuaDetectorManager::terminate();
     AppIdDiscovery::release_plugins();
     delete HttpPatternMatchers::get_instance();
+    delete appidDebug;
+    appidDebug = nullptr;
 }
 
 void AppIdInspector::eval(Packet* p)

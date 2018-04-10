@@ -134,12 +134,8 @@ static int SnortFTPData(Packet* p)
 
         if (!PROTO_IS_FTP(ftp_ssn))
         {
-            DebugMessage(DEBUG_FTPTELNET,
-                "FTP-DATA Invalid FTP_SESSION retrieved during lookup\n");
-
             if (data_ssn->data_chan)
                 p->flow->set_ignore_direction(SSN_DIR_BOTH);
-
 
             return -2;
         }
@@ -210,9 +206,8 @@ FtpDataFlowData::~FtpDataFlowData()
 
 void FtpDataFlowData::handle_expected(Packet* p)
 {
-    // FIXIT-M X This is an ugly, ugly hack, but it's the way Wizard is doing it
     if (!p->flow->service)
-        p->flow->service = fd_svc_name;
+        p->flow->set_service(p, fd_svc_name);
 }
 
 void FtpDataFlowData::handle_eof(Packet* p)

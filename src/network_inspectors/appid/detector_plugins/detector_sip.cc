@@ -261,23 +261,21 @@ int SipUdpClientDetector::sipServerPatternAdd(AppId ClientAppId, const char* cli
         pattern);
 }
 
-int SipUdpClientDetector::finalize_sip_ua()
+void SipUdpClientDetector::finalize()
 {
-    const int PATTERN_PART_MAX = 10;
-    static THREAD_LOCAL tMlmpPattern patterns[PATTERN_PART_MAX];
     int num_patterns;
     DetectorAppSipPattern* patternNode;
 
     detector_sip_config.sip_ua_matcher = mlmpCreate();
     if ( !detector_sip_config.sip_ua_matcher )
-        return -1;
+        return;
 
     detector_sip_config.sip_server_matcher = mlmpCreate();
     if ( !detector_sip_config.sip_server_matcher )
     {
         mlmpDestroy((tMlmpTree*)detector_sip_config.sip_ua_matcher);
         detector_sip_config.sip_ua_matcher = nullptr;
-        return -1;
+        return;
     }
 
     for ( patternNode = detector_sip_config.sip_ua_list; patternNode; patternNode =
@@ -302,7 +300,6 @@ int SipUdpClientDetector::finalize_sip_ua()
 
     mlmpProcessPatterns((tMlmpTree*)detector_sip_config.sip_ua_matcher);
     mlmpProcessPatterns((tMlmpTree*)detector_sip_config.sip_server_matcher);
-    return 0;
 }
 
 static int get_sip_client_app(void* patternMatcher, const char* pattern, uint32_t patternLen,
@@ -370,9 +367,6 @@ void SipServiceDetector::addFutureRtpFlows(SipEvent& event, AppIdSession& asd)
     if ( !session_a || !session_b )
         return;
 
-    DebugFormat(DEBUG_SIP, "Adding future media sessions ID: %u and %u\n",
-        session_b->get_id(), session_b->get_id());
-
     session_a->begin_media_data();
     session_b->begin_media_data();
 
@@ -381,11 +375,6 @@ void SipServiceDetector::addFutureRtpFlows(SipEvent& event, AppIdSession& asd)
 
     while ( media_a && media_b )
     {
-        DebugFormat(DEBUG_SIP, "Adding future channels Source IP: %s Port: %hu\n",
-            media_a->get_address()->ntoa(), media_a->get_port());
-        DebugFormat(DEBUG_SIP, "Adding future channels Destine IP: %s Port: %hu\n",
-            media_b->get_address()->ntoa(), media_b->get_port());
-
         createRtpFlow(asd, event.get_packet(), media_a->get_address(), media_a->get_port(),
             media_b->get_address(), media_b->get_port(), IpProtocol::UDP, APP_ID_RTP);
         createRtpFlow(asd, event.get_packet(), media_b->get_address(), media_b->get_port(),
