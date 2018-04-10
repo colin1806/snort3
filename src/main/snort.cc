@@ -233,6 +233,8 @@ void Snort::init(int argc, char** argv)
     SFAT_Init();
 
     load_actions();
+    //加载协议解码器, 保存到plugin_manager.cc 中 plug_map  Map中
+    //解码器是一种plugin, codec_api.cc
     load_codecs();
     load_connectors();
     load_ips_options();
@@ -244,6 +246,7 @@ void Snort::init(int argc, char** argv)
     load_stream_inspectors();
     load_network_inspectors();
     load_service_inspectors();
+    //以上将不同类型(PlugType不同)的插件, 装载到plug_map中
 
     /* chew up the command line */
     snort_cmd_line_conf = parse_cmd_line(argc, argv);
@@ -263,6 +266,8 @@ void Snort::init(int argc, char** argv)
     //模块初始化 -> module_init()
     ModuleManager::init();
     ScriptManager::load_scripts(snort_cmd_line_conf->script_paths);
+    //调用 add_plugin(Plugin& p), 根据PlugType的不同,
+    //调用对应 Plugin Manger(管理器 的add_plugin(const CodecApi* api)函数, 加载
     PluginManager::load_plugins(snort_cmd_line_conf->plugin_path);
 
     if ( SnortConfig::get_conf()->logging_flags & LOGGING_FLAG__SHOW_PLUGINS )
@@ -988,4 +993,3 @@ DAQ_Verdict Snort::packet_callback(
 
     return verdict;
 }
-

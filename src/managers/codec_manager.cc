@@ -212,6 +212,7 @@ void CodecManager::thread_init(SnortConfig* sc)
         Codec* cd = s_protocols[i];
         std::vector<int> data_link_types;
 
+        //获取data_link_types , 并不是所有的codec都重载了get_data_link_type
         cd->get_data_link_type(data_link_types);
         for (auto curr_dlt : data_link_types)
         {
@@ -227,6 +228,7 @@ void CodecManager::thread_init(SnortConfig* sc)
                 s_protocols[i]->get_protocol_ids(ids);
 
                 grinder_id = ( !ids.empty() ) ? ids[0] : ProtocolId::FINISHED_DECODE;
+                // 线程局部变量, 保存link type 的解码器索引
                 grinder = (uint8_t)i;
             }
         }

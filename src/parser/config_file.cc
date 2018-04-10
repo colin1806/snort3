@@ -47,6 +47,7 @@
 static std::string lua_conf;
 static std::string snort_conf_dir;
 
+//获取配置lua文件路径
 const char* get_snort_conf()
 { return lua_conf.c_str(); }
 

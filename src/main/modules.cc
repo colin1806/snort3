@@ -902,6 +902,7 @@ public:
     { return GLOBAL; }
 };
 
+//模块配置设置, manager调用
 bool ActiveModule::set(const char*, Value& v, SnortConfig* sc)
 {
     if ( v.is("attempts") )
@@ -1944,4 +1945,3 @@ void module_init()
     ModuleManager::add_module(new HostTrackerModule);
     ModuleManager::add_module(new HostCacheModule);
 }
-

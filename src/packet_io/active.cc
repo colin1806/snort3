@@ -515,7 +515,8 @@ void Active::apply_delayed_action(Packet* p)
 }
 
 //--------------------------------------------------------------------
-
+//libdnet 
+//http://libdnet.sourceforge.net/dnet.3.txt
 bool Active::open(const char* dev)
 {
     if ( dev && strcasecmp(dev, "ip") )

@@ -39,11 +39,12 @@
 // set the reserved field to this to be future proof
 #define API_RESERVED 0
 
+//插件类型 PT
 enum PlugType
 {
-    PT_CODEC,
-    PT_INSPECTOR,
-    PT_IPS_ACTION,
+    PT_CODEC,           //解码器
+    PT_INSPECTOR,   //检查
+    PT_IPS_ACTION,  //行为 处置
     PT_IPS_OPTION,
     PT_SEARCH_ENGINE,
     PT_SO_RULE,
@@ -65,7 +66,7 @@ typedef void (* ModDelFunc)(Module*);
 // so BaseApi must be the prefix (ie 1st member) of all plugin api
 struct BaseApi
 {
-    PlugType type;
+    PlugType type;  //插件类型
     uint32_t size;
     uint32_t api_version;
     uint32_t version;

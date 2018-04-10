@@ -378,6 +378,7 @@ static void printRuleListOrder(RuleListNode* node)
     LogMessage("%s\n", buf);
 }
 
+//解析配置文件
 static void parse_file(SnortConfig* sc, Shell* sh)
 {
     const char* fname = sh->get_file();
@@ -455,6 +456,7 @@ SnortConfig* ParseSnortConf(const SnortConfig* boot_conf, const char* fname)
     if ( *fname )
     {
         sh = sc->policy_map->get_shell();
+        //首先设置 文件, 然后parse_file 解析
         sh->set_file(fname);
     }
 
