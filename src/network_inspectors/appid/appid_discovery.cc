@@ -30,10 +30,10 @@
 #include "protocols/packet.h"
 #include "protocols/tcp.h"
 
+#include "app_forecast.h"
 #include "appid_config.h"
 #include "appid_debug.h"
 #include "appid_detector.h"
-#include "app_forecast.h"
 #include "appid_dns_session.h"
 #include "appid_http_session.h"
 #include "appid_inspector.h"
@@ -329,7 +329,7 @@ static bool is_packet_ignored(AppIdSession* asd, Packet* p, int& direction)
         if ( !p->is_rebuilt() )
         {
             // For HTTP/2, only examine packets that have been rebuilt as HTTP/1 packets.
-            AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::IGNORED_PACKETS);
+            appid_stats.ignored_packets++;
             return true;
         }
     }
@@ -349,7 +349,7 @@ static bool is_packet_ignored(AppIdSession* asd, Packet* p, int& direction)
                         hsession->get_field_offset(REQ_COOKIE_FID),
                         hsession->get_field_end_offset(REQ_COOKIE_FID));
             }
-        AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::IGNORED_PACKETS);
+        appid_stats.ignored_packets++;
         return true;
         }
     }
@@ -606,7 +606,7 @@ void AppIdDiscovery::do_application_discovery(Packet* p, AppIdInspector& inspect
     AppIdSession* asd = (AppIdSession*)p->flow->get_flow_data(AppIdSession::inspector_id);
     if ( !set_network_attributes(asd, p, protocol, direction) )
     {
-        AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::IGNORED_PACKETS);
+        appid_stats.ignored_packets++;
         return;
     }
 
@@ -678,13 +678,19 @@ void AppIdDiscovery::do_application_discovery(Packet* p, AppIdInspector& inspect
     if ( !asd || asd->common.flow_type == APPID_FLOW_TYPE_TMP )
     {
         asd = AppIdSession::allocate_session(p, protocol, direction, inspector);
-        if (appidDebug->is_active())
+        if (p->flow->get_session_flags() & SSNFLAG_MIDSTREAM)
+        {
+            asd->set_session_flags(APPID_SESSION_MID);
+            if (appidDebug->is_active())
+                LogMessage("AppIdDbg %s New AppId mid-stream session\n", appidDebug->get_debug_session());
+        }
+        else if (appidDebug->is_active())
             LogMessage("AppIdDbg %s New AppId session\n", appidDebug->get_debug_session());
     }
 
     // FIXIT-L - from this point on we always have a valid ptr to an AppIdSession and a Packet
     //           refactor to pass these as refs and delete any checks for null
-    AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::PROCESSED_PACKETS);
+    appid_stats.processed_packets++;
     asd->session_packet_count++;
 
     if (direction == APP_ID_FROM_INITIATOR)
@@ -708,6 +714,7 @@ void AppIdDiscovery::do_application_discovery(Packet* p, AppIdInspector& inspect
         return;
     }
 
+    // FIXIT-H - Bring APPID_SESSION_OOO related changes from snort2 ASAP for performance reason
     if (p->packet_flags & PKT_STREAM_ORDER_BAD)
         asd->set_session_flags(APPID_SESSION_OOO);
     else if ( p->is_tcp() && p->ptrs.tcph )

@@ -45,9 +45,6 @@ using namespace snort;
 
 SnortProtocolId ftp_data_snort_protocol_id = UNKNOWN_PROTOCOL_ID;
 
-#define client_key "ftp_client"
-#define server_key "ftp_server"
-
 #define client_help "FTP inspector client module"
 #define server_help "FTP inspector server module"
 
@@ -96,7 +93,7 @@ static int SnortFTP(
     ret = check_ftp(FTPsession, p, iInspectMode);
     if ( ret == FTPP_SUCCESS )
     {
-        ProfileExclude exclude(ftpPerfStats);
+        NoProfile exclude(ftpPerfStats);
 
         // FIXIT-L ideally do_detection will look at the cmd & param buffers
         // or the rsp & msg buffers.  We should call it from inside check_ftp
@@ -359,7 +356,7 @@ FTP_CLIENT_PROTO_CONF* get_ftp_client(Packet* p)
     FtpClient* client = (FtpClient*)p->flow->data;
     if ( !client )
     {
-        client = (FtpClient*)InspectorManager::get_inspector(client_key);
+        client = (FtpClient*)InspectorManager::get_inspector(FTP_CLIENT_NAME);
         assert(client);
         p->flow->set_data(client);
     }
@@ -413,13 +410,13 @@ static const InspectApi fc_api =
         0,
         API_RESERVED,
         API_OPTIONS,
-        client_key,
+        FTP_CLIENT_NAME,
         client_help,
         fc_mod_ctor,
         mod_dtor
     },
     IT_PASSIVE,
-    (uint16_t)PktType::NONE,
+    PROTO_BIT__NONE,
     nullptr, // buffers
     "ftp",
     nullptr, // init,
@@ -468,13 +465,13 @@ static const InspectApi fs_api =
         0,
         API_RESERVED,
         API_OPTIONS,
-        server_key,
+        FTP_SERVER_NAME,
         server_help,
         fs_mod_ctor,
         mod_dtor
     },
     IT_SERVICE,
-    (uint16_t)PktType::PDU,
+    PROTO_BIT__PDU,
     nullptr, // buffers
     "ftp",
     fs_init,

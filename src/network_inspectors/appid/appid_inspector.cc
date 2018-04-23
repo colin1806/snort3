@@ -183,7 +183,7 @@ void AppIdInspector::eval(Packet* p)
 {
     Profile profile(appidPerfStats);
 
-    AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::PACKETS);
+    appid_stats.packets++;
     if (p->flow)
     {
         AppIdDiscovery::do_application_discovery(p, *this);
@@ -192,7 +192,7 @@ void AppIdInspector::eval(Packet* p)
             add_appid_to_packet_trace(*p->flow);
     }
     else
-        AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::IGNORED_PACKETS);
+        appid_stats.ignored_packets++;
 }
 
 //-------------------------------------------------------------------------
@@ -255,7 +255,7 @@ const InspectApi appid_inspector_api =
         mod_dtor
     },
     IT_CONTROL,
-    (uint16_t)PktType::ANY_IP,
+    PROTO_BIT__ANY_IP,
     nullptr, // buffers
     nullptr, // service
     appid_inspector_pinit,

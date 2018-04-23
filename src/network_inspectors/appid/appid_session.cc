@@ -105,7 +105,7 @@ AppIdSession::AppIdSession(IpProtocol proto, const SfIp* ip, uint16_t port,
     length_sequence.sequence_cnt = 0;
     memset(length_sequence.sequence, '\0', sizeof(length_sequence.sequence));
 
-    AppIdPegCounts::inc_disco_peg(AppIdPegCounts::DiscoveryPegs::TOTAL_SESSIONS);
+    appid_stats.total_sessions++;
 }
 
 AppIdSession::~AppIdSession()
@@ -117,8 +117,8 @@ AppIdSession::~AppIdSession()
             stats_mgr->update(*this);
 
         // fail any service detection that is in process for this flow
-        if (flow &&
-            !get_session_flags(APPID_SESSION_SERVICE_DETECTED | APPID_SESSION_UDP_REVERSED) )
+        if (!get_session_flags(APPID_SESSION_SERVICE_DETECTED | APPID_SESSION_UDP_REVERSED |
+            APPID_SESSION_MID | APPID_SESSION_OOO) and flow)
         {
             ServiceDiscoveryState* sds =
                 AppIdServiceState::get(&service_ip, protocol, service_port, is_decrypted());
