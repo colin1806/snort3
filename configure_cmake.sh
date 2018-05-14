@@ -56,11 +56,15 @@ Optional Features:
                             enable thread sanitizer support
     --enable-ub-sanitizer
                             enable undefined behavior sanitizer support
+    --enable-appid-third-party
+                            enable third party appid
     --enable-unit-tests     build unit tests
     --enable-piglet         build piglet test harness
     --disable-static-daq    link static DAQ modules
     --disable-html-docs     don't create the HTML documentation
     --disable-pdf-docs      don't create the PDF documentation
+    --disable-text-docs     don't create the TEXT documentation
+    --disable-docs          don't create documentation
 
 Optional Packages:
     --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -278,6 +282,9 @@ while [ $# -ne 0 ]; do
         --disable-ub-sanitizer)
             append_cache_entry ENABLE_UB_SANITIZER  BOOL false
             ;;
+        --enable-appid-third-party)
+            append_cache_entry ENABLE_APPID_THIRD_PARTY        BOOL true
+            ;;
         --enable-unit-tests)
             append_cache_entry ENABLE_UNIT_TESTS        BOOL true
             ;;
@@ -307,6 +314,18 @@ while [ $# -ne 0 ]; do
             ;;
         --enable-pdf-docs)
             append_cache_entry MAKE_PDF_DOC             BOOL true
+            ;;
+        --disable-text-docs)
+            append_cache_entry MAKE_TEXT_DOC            BOOL false
+            ;;
+        --enable-text-docs)
+            append_cache_entry MAKE_TEXT_DOC            BOOL true
+            ;;
+        --disable-docs)
+            append_cache_entry MAKE_DOC                 BOOL false
+            ;;
+        --enable-docs)
+            append_cache_entry MAKE_DOC                 BOOL true
             ;;
         --with-pcap-includes=*)
             append_cache_entry PCAP_INCLUDE_DIR_HINT PATH $optarg

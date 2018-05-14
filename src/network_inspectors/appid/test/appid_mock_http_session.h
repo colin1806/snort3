@@ -24,9 +24,6 @@
 AppIdHttpSession::AppIdHttpSession(AppIdSession& session)
     : asd(session)
 {
-    http_fields.reserve(MAX_HTTP_FIELD_ID);
-    ptype_req_counts.assign(MAX_HTTP_FIELD_ID, 0);
-    ptype_scan_counts.assign(MAX_HTTP_FIELD_ID, 0);
 }
 
 AppIdHttpSession::~AppIdHttpSession()
@@ -34,7 +31,7 @@ AppIdHttpSession::~AppIdHttpSession()
     delete xff_addr;
 }
 
-int AppIdHttpSession::process_http_packet(int) { return 0; }
+int AppIdHttpSession::process_http_packet(AppidSessionDirection) { return 0; }
 
 char const* APPID_UT_XFF_IP_ADDR = "192.168.0.1";
 char const* CONTENT_TYPE = "html/text";

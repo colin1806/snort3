@@ -22,8 +22,9 @@
 #ifndef LENGTH_APP_CACHE_H
 #define LENGTH_APP_CACHE_H
 
-#include "application_ids.h"
 #include "protocols/protocol_ids.h"
+#include "appid_types.h"
+#include "application_ids.h"
 
 #define LENGTH_SEQUENCE_CNT_MAX (5)
 
@@ -34,7 +35,7 @@ enum class IpProtocol : uint8_t;
 
 struct LengthSequenceEntry
 {
-    uint8_t direction = 0;     /* APP_ID_FROM_INITIATOR or APP_ID_FROM_RESPONDER */
+    AppidSessionDirection direction = APP_ID_FROM_INITIATOR;
     uint16_t length = 0;       /* payload size (bytes) */
 };
 

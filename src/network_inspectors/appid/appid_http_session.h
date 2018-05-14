@@ -23,16 +23,36 @@
 #define APPID_HTTP_SESSION_H
 
 #include <string>
-#include <vector>
 
-#include "application_ids.h"
 #include "flow/flow.h"
 #include "sfip/sf_ip.h"
+
+#include "appid_types.h"
+#include "application_ids.h"
+#include "http_xff_fields.h"
 
 class AppIdSession;
 class ChpMatchDescriptor;
 class HttpPatternMatchers;
-enum HttpFieldIds : uint8_t;
+
+// These values are used in Lua code as raw numbers. Do NOT reassign new values.
+enum HttpFieldIds : uint8_t
+{
+    // Request-side headers
+    REQ_AGENT_FID,          // 0
+    REQ_HOST_FID,           // 1
+    REQ_REFERER_FID,        // 2
+    REQ_URI_FID,            // 3
+    REQ_COOKIE_FID,         // 4
+    REQ_BODY_FID,           // 5
+    // Response-side headers
+    RSP_CONTENT_TYPE_FID,   // 6
+    RSP_LOCATION_FID,       // 7
+    RSP_BODY_FID,           // 8
+    MAX_HTTP_FIELD_ID,      // 9
+    MAX_PATTERN_TYPE = RSP_BODY_FID,
+    MAX_KEY_PATTERN = REQ_URI_FID,
+};
 
 #define RESPONSE_CODE_PACKET_THRESHHOLD 0
 
@@ -48,19 +68,13 @@ struct HttpField
     uint16_t end_offset = 0;
 };
 
-struct XffFieldValue
-{
-    char* field;
-    char* value;
-};
-
 class AppIdHttpSession
 {
 public:
     AppIdHttpSession(AppIdSession&);
     virtual ~AppIdHttpSession();
 
-    int process_http_packet(int);
+    int process_http_packet(AppidSessionDirection direction);
     void update_http_xff_address(struct XffFieldValue* xff_fields, uint32_t numXffFields);
 
     const char* get_user_agent()
@@ -204,7 +218,6 @@ protected:
     std::string req_body;
     std::string server;
     std::string x_working_with;
-    std::vector<HttpField> http_fields;
     bool is_webdav = false;
     bool chp_finished = false;
     AppId chp_candidate = APP_ID_NONE;
@@ -219,8 +232,9 @@ protected:
     snort::SfIp* xff_addr = nullptr;
     const char** xffPrecedence = nullptr;
     unsigned numXffFields = 0;
-    std::vector<int> ptype_req_counts;
-    std::vector<int> ptype_scan_counts;
+    HttpField http_fields[MAX_HTTP_FIELD_ID];
+    int ptype_req_counts[MAX_HTTP_FIELD_ID] = {0};
+    int ptype_scan_counts[MAX_HTTP_FIELD_ID] = {0};
 #if RESPONSE_CODE_PACKET_THRESHHOLD
     unsigned response_code_packets = 0;
 #endif

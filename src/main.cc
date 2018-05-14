@@ -37,7 +37,6 @@
 #include "main/shell.h"
 #include "main/snort.h"
 #include "main/snort_config.h"
-#include "main/snort_debug.h"
 #include "main/snort_module.h"
 #include "main/swapper.h"
 #include "main/thread_config.h"
@@ -201,15 +200,8 @@ bool Pig::queue_command(AnalyzerCommand* ac, bool orphan)
             orphan_commands.push(ac);
         return false;
     }
-
-#ifdef DEBUG_MSGS
-    unsigned ac_ref_count = ac->get();
-    DebugFormat(DEBUG_ANALYZER, "[%u] Queuing command %s for execution (refcount %u)\n",
-            idx, ac->stringify(), ac_ref_count);
-#else
     //get只调用 ref++
     ac->get();
-#endif
     //让analizer执行命令. 机制:将命令放松到analyzer的命令队列中, analyzer轮寻队列,执行命令(主要是控制命令)
     //命令参看: analyzer_command.h
     analyzer->execute(ac);
@@ -221,15 +213,8 @@ void Pig::reap_command(AnalyzerCommand* ac)
     unsigned ac_ref_count = ac->put();
     if (ac_ref_count == 0)
     {
-        DebugFormat(DEBUG_ANALYZER, "[%u] Destroying completed command %s\n",
-                idx, ac->stringify());
         delete ac;
     }
-#ifdef DEBUG_MSGS
-    else
-        DebugFormat(DEBUG_ANALYZER, "[%u] Reaped ongoing command %s (refcount %u)\n",
-                idx, ac->stringify(), ac_ref_count);
-#endif
 }
 
 void Pig::reap_commands()
@@ -274,8 +259,6 @@ static Pig* get_lazy_pig(unsigned max)
 void snort::main_broadcast_command(AnalyzerCommand* ac)
 {
     unsigned dispatched = 0;
-
-    DebugFormat(DEBUG_ANALYZER, "Broadcasting %s command\n", ac->stringify());
 
     for (unsigned idx = 0; idx < max_pigs; ++idx)
     {
@@ -619,7 +602,6 @@ static void reap_commands()
     {
         AnalyzerCommand* ac = orphan_commands.front();
         orphan_commands.pop();
-        DebugFormat(DEBUG_ANALYZER, "Destroying orphan command %s\n", ac->stringify());
         delete ac;
     }
 }

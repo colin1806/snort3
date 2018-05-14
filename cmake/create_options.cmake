@@ -16,6 +16,7 @@ option ( ENABLE_STATIC_DAQ "link static DAQ modules" ON )
 
 # features
 option ( ENABLE_SHELL "enable shell support" OFF )
+option ( ENABLE_APPID_THIRD_PARTY "enable third party appid" OFF )
 option ( ENABLE_UNIT_TESTS "enable unit tests" OFF )
 option ( ENABLE_PIGLET "enable piglet test harness" OFF )
 
@@ -28,6 +29,7 @@ option ( ENABLE_TSC_CLOCK "Use timestamp counter register clock (x86 only)" OFF 
 option ( MAKE_HTML_DOC "Create the HTML documentation" ON )
 option ( MAKE_PDF_DOC "Create the PDF documentation" ON )
 option ( MAKE_TEXT_DOC "Create the text documentation" ON )
+option ( MAKE_DOC "Create documentation" ON )
 
 # security
 option ( ENABLE_HARDENED_BUILD "Detect and use compile-time hardening options" OFF )

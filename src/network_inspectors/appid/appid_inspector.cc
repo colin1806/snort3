@@ -29,9 +29,9 @@
 
 #include "flow/flow.h"
 #include "log/messages.h"
-#include "log/packet_tracer.h"
 #include "managers/inspector_manager.h"
 #include "managers/module_manager.h"
+#include "packet_tracer/packet_tracer.h"
 #include "profiler/profiler.h"
 #include "protocols/packet.h"
 
@@ -50,7 +50,6 @@
 #include "lua_detector_module.h"
 #include "service_plugins/service_discovery.h"
 #include "service_plugins/service_ssl.h"
-#include "thirdparty_appid_utils.h"
 
 using namespace snort;
 static THREAD_LOCAL PacketTracer::TracerMute appid_mute;
@@ -68,19 +67,22 @@ static void add_appid_to_packet_trace(Flow& flow)
     if (session)
     {
         AppId service_id, client_id, payload_id, misc_id;
-        const char *service_app_name, *client_app_name, *payload_app_name, *misc_name;
+        const char* service_app_name, * client_app_name, * payload_app_name, * misc_name;
         session->get_application_ids(service_id, client_id, payload_id, misc_id);
         service_app_name = appid_api.get_application_name(service_id);
         client_app_name = appid_api.get_application_name(client_id);
         payload_app_name = appid_api.get_application_name(payload_id);
         misc_name = appid_api.get_application_name(misc_id);
 
-        PacketTracer::log(appid_mute,
-            "AppID: service: %s(%d), client: %s(%d), payload: %s(%d), misc: %s(%d)\n",
-            (service_app_name ? service_app_name : ""), service_id,
-            (client_app_name ? client_app_name : ""), client_id,
-            (payload_app_name ? payload_app_name : ""), payload_id,
-            (misc_name ? misc_name : ""), misc_id);
+        if (PacketTracer::is_active())
+        {
+            PacketTracer::log(appid_mute,
+                    "AppID: service: %s(%d), client: %s(%d), payload: %s(%d), misc: %s(%d)\n",
+                    (service_app_name ? service_app_name : ""), service_id,
+                    (client_app_name ? client_app_name : ""), client_id,
+                    (payload_app_name ? payload_app_name : ""), payload_id,
+                    (misc_name ? misc_name : ""), misc_id);
+        }
     }
 }
 
@@ -160,6 +162,9 @@ void AppIdInspector::tinit()
     appidDebug = new AppIdDebug();
     if (active_config->mod_config and active_config->mod_config->log_all_sessions)
         appidDebug->set_enabled(true);
+#ifdef ENABLE_APPID_THIRD_PARTY
+    active_config->tp_appid_module_tinit();
+#endif
 }
 
 void AppIdInspector::tterm()
@@ -177,18 +182,21 @@ void AppIdInspector::tterm()
     delete HttpPatternMatchers::get_instance();
     delete appidDebug;
     appidDebug = nullptr;
+#ifdef ENABLE_APPID_THIRD_PARTY
+    active_config->tp_appid_module_tterm();
+#endif
 }
 
 void AppIdInspector::eval(Packet* p)
 {
     Profile profile(appidPerfStats);
-
     appid_stats.packets++;
+    
     if (p->flow)
     {
         AppIdDiscovery::do_application_discovery(p, *this);
         // FIXIT-L tag verdict reason as appid for daq
-        if (PacketTracer::active())
+        if (PacketTracer::is_active())
             add_appid_to_packet_trace(*p->flow);
     }
     else
@@ -231,7 +239,7 @@ static void appid_inspector_tterm()
 
 static Inspector* appid_inspector_ctor(Module* m)
 {
-	assert(m);
+    assert(m);
     return new AppIdInspector((AppIdModule&)*m);
 }
 
@@ -301,8 +309,7 @@ int sslAppGroupIdLookup(void*, const char*, const char*, AppId*, AppId*, AppId*)
     if (serverName)
     {
         ssl_scan_hostname((const uint8_t*)serverName, strlen(serverName), client_id,
-            payload_app_id,
-            &get_appid_config()->serviceSslConfig);
+            payload_app_id, &get_appid_config()->serviceSslConfig);
     }
 
     if (ssnptr && (asd = appid_api.get_appid_session(ssnptr)))
