@@ -49,6 +49,12 @@ Optional Features:
                             only)
     --disable-gdb           disable gdb debugging information
     --enable-gprof-profile  enable gprof profiling options (developers only)
+    --disable-snort-profiler
+                            disable snort performance profiling (cpu and memory) (developers only)
+    --enable-deep-profiling
+                            enabled detailed snort performance profiling (developers only)
+    --disable-memory-manager
+                            disable snort memory manager (developers only)
     --disable-corefiles     prevent Snort from generating core files
     --enable-address-sanitizer
                             enable address sanitizer support
@@ -56,6 +62,8 @@ Optional Features:
                             enable thread sanitizer support
     --enable-ub-sanitizer
                             enable undefined behavior sanitizer support
+    --enable-tcmalloc
+                            enable using tcmalloc for dynamic memory management
     --enable-appid-third-party
                             enable third party appid
     --enable-unit-tests     build unit tests
@@ -231,6 +239,15 @@ while [ $# -ne 0 ]; do
         --enable-tsc-clock)
             append_cache_entry ENABLE_TSC_CLOCK         BOOL true
             ;;
+        --disable-snort-profiler)
+            append_cache_entry DISABLE_SNORT_PROFILER   BOOL true
+            ;;
+        --enable-deep-profiling)
+            append_cache_entry ENABLE_DEEP_PROFILING    BOOL true
+            ;;
+        --disable-memory-manager)
+            append_cache_entry DISABLE_MEMORY_MANAGER   BOOL true
+            ;;
         --disable-large-pcap)
             append_cache_entry ENABLE_LARGE_PCAP        BOOL false
             ;;
@@ -277,13 +294,19 @@ while [ $# -ne 0 ]; do
             append_cache_entry ENABLE_THREAD_SANITIZER  BOOL false
             ;;
         --enable-ub-sanitizer)
-            append_cache_entry ENABLE_UB_SANITIZER  BOOL true
+            append_cache_entry ENABLE_UB_SANITIZER      BOOL true
             ;;
         --disable-ub-sanitizer)
-            append_cache_entry ENABLE_UB_SANITIZER  BOOL false
+            append_cache_entry ENABLE_UB_SANITIZER      BOOL false
+            ;;
+        --enable-tcmalloc)
+            append_cache_entry ENABLE_TCMALLOC          BOOL true
+            ;;
+        --disable-tcmalloc)
+            append_cache_entry ENABLE_TCMALLOC          BOOL false
             ;;
         --enable-appid-third-party)
-            append_cache_entry ENABLE_APPID_THIRD_PARTY        BOOL true
+            append_cache_entry ENABLE_APPID_THIRD_PARTY BOOL true
             ;;
         --enable-unit-tests)
             append_cache_entry ENABLE_UNIT_TESTS        BOOL true
