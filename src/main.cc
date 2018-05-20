@@ -254,22 +254,6 @@ static Pig* get_lazy_pig(unsigned max)
 //-------------------------------------------------------------------------
 // main commands
 //-------------------------------------------------------------------------
-
-//命令广播到所有pig
-void snort::main_broadcast_command(AnalyzerCommand* ac)
-{
-    unsigned dispatched = 0;
-
-    for (unsigned idx = 0; idx < max_pigs; ++idx)
-    {
-        if (pigs[idx].queue_command(ac))
-            dispatched++;
-    }
-
-    if (!dispatched)
-        orphan_commands.push(ac);
-}
-
 static AnalyzerCommand* get_command(AnalyzerCommand* ac, bool from_shell)
 {
 #ifndef SHELL
@@ -282,11 +266,28 @@ static AnalyzerCommand* get_command(AnalyzerCommand* ac, bool from_shell)
         return ac;
 }
 
+//命令广播到所有pig
+void snort::main_broadcast_command(AnalyzerCommand* ac, bool from_shell)
+{
+    unsigned dispatched = 0;
+    
+    ac = get_command(ac, from_shell);
+
+    for (unsigned idx = 0; idx < max_pigs; ++idx)
+    {
+        if (pigs[idx].queue_command(ac))
+            dispatched++;
+    }
+
+    if (!dispatched)
+        orphan_commands.push(ac);
+}
+
 int main_dump_stats(lua_State* L)
 {
     bool from_shell = ( L != nullptr );
     current_request->respond("== dumping stats\n", from_shell);
-    main_broadcast_command(get_command(new ACGetStats(), from_shell));
+    main_broadcast_command(new ACGetStats(), from_shell);
     return 0;
 }
 
@@ -294,7 +295,7 @@ int main_rotate_stats(lua_State* L)
 {
     bool from_shell = ( L != nullptr );
     current_request->respond("== rotating stats\n", from_shell);
-    main_broadcast_command(get_command(new ACRotate(), from_shell));
+    main_broadcast_command(new ACRotate(), from_shell);
     return 0;
 }
 
@@ -336,7 +337,7 @@ int main_reload_config(lua_State* L)
 
     bool from_shell = ( L != nullptr );
     current_request->respond(".. swapping configuration\n", from_shell);
-    main_broadcast_command(get_command(new ACSwap(new Swapper(old, sc, old_tc, tc)), from_shell));
+    main_broadcast_command(new ACSwap(new Swapper(old, sc, old_tc, tc)), from_shell);
 
     return 0;
 }
@@ -377,7 +378,7 @@ int main_reload_policy(lua_State* L)
 
     bool from_shell = ( L != nullptr );
     current_request->respond(".. swapping policy\n", from_shell);
-    main_broadcast_command(get_command(new ACSwap(new Swapper(old, sc)), from_shell));
+    main_broadcast_command(new ACSwap(new Swapper(old, sc)), from_shell);
 
     return 0;
 }
@@ -386,7 +387,7 @@ int main_reload_daq(lua_State* L)
 {
     bool from_shell = ( L != nullptr );
     current_request->respond(".. reloading daq module\n", from_shell);
-    main_broadcast_command(get_command(new ACDAQSwap(), from_shell));
+    main_broadcast_command(new ACDAQSwap(), from_shell);
     proc_stats.daq_reloads++;
 
     return 0;
@@ -424,7 +425,7 @@ int main_reload_hosts(lua_State* L)
 
     bool from_shell = ( L != nullptr );
     current_request->respond(".. swapping hosts table\n", from_shell);
-    main_broadcast_command(get_command(new ACSwap(new Swapper(old, tc)), from_shell));
+    main_broadcast_command(new ACSwap(new Swapper(old, tc)), from_shell);
 
     return 0;
 }
@@ -465,7 +466,7 @@ int main_delete_inspector(lua_State* L)
 
     bool from_shell = ( L != nullptr );
     current_request->respond(".. deleted inspector\n", from_shell);
-    main_broadcast_command(get_command(new ACSwap(new Swapper(old, sc)), from_shell));
+    main_broadcast_command(new ACSwap(new Swapper(old, sc)), from_shell);
 
     return 0;
 }
@@ -487,7 +488,7 @@ int main_pause(lua_State* L)
 {
     bool from_shell = ( L != nullptr );
     current_request->respond("== pausing\n", from_shell);
-    main_broadcast_command(get_command(new ACPause(), from_shell));
+    main_broadcast_command(new ACPause(), from_shell);
     paused = true;
     return 0;
 }
@@ -496,7 +497,7 @@ int main_resume(lua_State* L)
 {
     bool from_shell = ( L != nullptr );
     current_request->respond("== resuming\n", from_shell);
-    main_broadcast_command(get_command(new ACResume(), from_shell));
+    main_broadcast_command(new ACResume(), from_shell);
     paused = false;
     return 0;
 }
@@ -520,7 +521,7 @@ int main_quit(lua_State* L)
 {
     bool from_shell = ( L != nullptr );
     current_request->respond("== stopping\n", from_shell);
-    main_broadcast_command(get_command(new ACStop(), from_shell));
+    main_broadcast_command(new ACStop(), from_shell);
     exit_requested = true;
     return 0;
 }
