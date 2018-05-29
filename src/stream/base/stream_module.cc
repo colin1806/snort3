@@ -24,6 +24,7 @@
 
 #include "stream_module.h"
 
+#include "detection/rules.h"
 #include "main/snort_debug.h"
 
 using namespace snort;
@@ -78,6 +79,16 @@ static const Parameter s_params[] =
     { nullptr, Parameter::PT_MAX, nullptr, nullptr, nullptr }
 };
 
+// FIXIT-L setup and clear should extend to non-tcp flows as well
+static const RuleMap stream_rules[] =
+{
+    { SESSION_EVENT_SYN_RX, "TCP SYN received" },
+    { SESSION_EVENT_SETUP,  "TCP session established" },
+    { SESSION_EVENT_CLEAR,  "TCP session cleared" },
+
+    { 0, nullptr }
+};
+
 StreamModule::StreamModule() :
     Module(MOD_NAME, MOD_HELP, s_params, false, &TRACE_NAME(stream))
 { }
@@ -90,6 +101,12 @@ PegCount* StreamModule::get_counts() const
 
 ProfileStats* StreamModule::get_profile() const
 { return &s5PerfStats; }
+
+unsigned StreamModule::get_gid() const
+{ return GID_SESSION; }
+
+const RuleMap* StreamModule::get_rules() const
+{ return stream_rules; }
 
 const StreamModuleConfig* StreamModule::get_data()
 {
